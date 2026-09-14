@@ -105,3 +105,26 @@ VALUES (
     TRUE
 )
 ON CONFLICT (staff_id) DO NOTHING;
+
+-- Seed FMCG Master Product Catalog
+INSERT INTO products (sku_code, name, brand, category, is_aci, mrp, target_shelf_share)
+VALUES
+    ('ACI-FLOUR-2KG', 'ACI Pure Atta 2kg', 'ACI', 'staples', TRUE, 145.0, 35.0),
+    ('ACI-FLOUR-1KG', 'ACI Pure Maida 1kg', 'ACI', 'staples', TRUE, 80.0, 30.0),
+    ('ACI-SALT-1KG', 'ACI Pure Vacuum Salt 1kg', 'ACI', 'cooking', TRUE, 42.0, 45.0),
+    ('ACI-SUGAR-1KG', 'ACI Pure Brown Sugar 1kg', 'ACI', 'staples', TRUE, 160.0, 25.0),
+    ('ACI-SPICE-CHILI-100G', 'ACI Pure Chili Powder 100g', 'ACI', 'cooking', TRUE, 95.0, 35.0),
+    ('ACI-SPICE-TURM-100G', 'ACI Pure Turmeric Powder 100g', 'ACI', 'cooking', TRUE, 85.0, 35.0),
+    ('ACI-NUTRILIFE-SOY', 'ACI Nutrilife Soya Oil 5L', 'ACI', 'cooking', TRUE, 820.0, 25.0),
+    ('ACI-TEA-400G', 'ACI Aroma Tea 400g', 'ACI', 'beverages', TRUE, 240.0, 20.0),
+    ('PRAN-FLOUR-2KG', 'Pran Special Atta 2kg', 'Pran', 'staples', FALSE, 140.0, 20.0),
+    ('PRAN-SALT-1KG', 'Pran Iodized Salt 1kg', 'Pran', 'cooking', FALSE, 40.0, 20.0),
+    ('PRAN-MANGO-1L', 'Pran Frooto Mango Juice 1L', 'Pran', 'beverages', FALSE, 120.0, 30.0),
+    ('FRESH-FLOUR-2KG', 'Fresh Fortified Atta 2kg', 'Fresh', 'staples', FALSE, 145.0, 20.0),
+    ('FRESH-SUGAR-1KG', 'Fresh Refined Sugar 1kg', 'Fresh', 'staples', FALSE, 155.0, 30.0),
+    ('TEER-FLOUR-2KG', 'Teer Whole Wheat Atta 2kg', 'Teer', 'staples', FALSE, 142.0, 15.0),
+    ('TEER-OIL-5L', 'Teer Pure Soybean Oil 5L', 'Teer', 'cooking', FALSE, 815.0, 25.0),
+    ('LAYS-CLASSIC', 'Lay''s Classic Chips', 'Lay''s', 'beverages', FALSE, 50.0, 15.0),
+    ('LAYS-SOUR-CREAM', 'Lay''s Sour Cream & Onion Chips', 'Lay''s', 'beverages', FALSE, 50.0, 15.0),
+    ('LAYS-BARBECUE', 'Lay''s Barbecue Chips', 'Lay''s', 'beverages', FALSE, 50.0, 15.0)
+ON CONFLICT (sku_code) DO NOTHING;
