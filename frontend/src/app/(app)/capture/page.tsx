@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Camera, Image as ImageIcon, Box, AlertTriangle, PlayCircle, CheckCircle, RefreshCw, Layers, Edit3, Key, Plus } from "lucide-react";
+import { Camera, Image as ImageIcon, Box, AlertTriangle, PlayCircle, CheckCircle, RefreshCw, Layers, Edit3, Key, Plus, History, Eye } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
 
 interface Outlet {
@@ -73,6 +73,11 @@ export default function CaptureShelf() {
   const [analysisResult, setAnalysisResult] = useState<VisionResult | null>(null);
   const [error, setError] = useState<string>("");
 
+  // History & Tabs State
+  const [pastCaptures, setPastCaptures] = useState<any[]>([]);
+  const [rightTab, setRightTab] = useState<"result" | "history">("result");
+  const [loadingPastCapture, setLoadingPastCapture] = useState(false);
+
   // Manual Audit States
   const [manualFacings, setManualFacings] = useState<ManualFacingState>({});
   const [posmPresent, setPosmPresent] = useState(false);
@@ -80,7 +85,38 @@ export default function CaptureShelf() {
   const [savingManual, setSavingManual] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
 
-  // Load Outlets and User API Key status on Mount
+  const loadPastCaptures = async (autoSelectFirst = false) => {
+    try {
+      const res = await fetchWithAuth("/api/captures");
+      if (res.ok) {
+        const data = await res.json();
+        setPastCaptures(data);
+        if (autoSelectFirst && data.length > 0) {
+          selectPastCapture(data[0].id);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load captures:", e);
+    }
+  };
+
+  const selectPastCapture = async (id: number) => {
+    setLoadingPastCapture(true);
+    try {
+      const res = await fetchWithAuth(`/api/captures/${id}`);
+      if (res.ok) {
+        const json = await res.json();
+        setAnalysisResult(json);
+        setRightTab("result");
+      }
+    } catch (e) {
+      console.error("Failed to load capture details:", e);
+    } finally {
+      setLoadingPastCapture(false);
+    }
+  };
+
+  // Load Outlets, Key status, and Past Captures on Mount
   useEffect(() => {
     fetchWithAuth("/api/outlets")
       .then((res) => (res.ok ? res.json() : []))
@@ -100,6 +136,8 @@ export default function CaptureShelf() {
         }
       })
       .catch(() => {});
+
+    loadPastCaptures(true);
   }, []);
 
   // Load Catalog SKUs when section changes
@@ -184,6 +222,8 @@ export default function CaptureShelf() {
       if (res.ok) {
         const json = await res.json();
         setAnalysisResult(json);
+        setRightTab("result");
+        loadPastCaptures(false);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.detail || "AI vision detection failed. Please check your Gemini API key.");
@@ -237,6 +277,8 @@ export default function CaptureShelf() {
       if (res.ok) {
         const json = await res.json();
         setAnalysisResult(json);
+        setRightTab("result");
+        loadPastCaptures(false);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.detail || "Failed to record manual audit.");
@@ -609,26 +651,147 @@ export default function CaptureShelf() {
 
         {/* Right Result Column */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col h-full">
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-pink-600">
-                <Box size={16} />
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-gray-900">Audit Result</h2>
-                <p className="text-[10px] text-gray-500">Live shelf share and SKU detections recorded to database</p>
-              </div>
+          <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            {/* Tabs */}
+            <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
+              <button
+                onClick={() => setRightTab("result")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  rightTab === "result"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                <Box size={13} /> Active Result
+              </button>
+              <button
+                onClick={() => setRightTab("history")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  rightTab === "history"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                <History size={13} /> Audit History ({pastCaptures.length})
+              </button>
             </div>
-            {analysisResult && (
-              <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold flex items-center gap-1">
-                <CheckCircle size={12} /> Audit Recorded
+
+            {analysisResult && rightTab === "result" && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[11px] font-bold flex items-center gap-1">
+                <CheckCircle size={11} /> Stored in DB
               </span>
             )}
           </div>
           
           <div className="p-6 flex-1 flex flex-col justify-start">
-            {analysisResult ? (
+            {loadingPastCapture ? (
+              <div className="py-20 flex flex-col items-center justify-center text-center">
+                <div className="w-8 h-8 border-3 border-pink-200 border-t-[#ca1551] rounded-full animate-spin mb-3"></div>
+                <p className="text-xs font-semibold text-gray-600">Loading shelf detections...</p>
+              </div>
+            ) : rightTab === "history" ? (
+              /* Audit History Tab */
+              <div className="space-y-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Previously Captured Shelves ({pastCaptures.length})
+                  </h3>
+                  <Link href="/audits" className="text-xs font-bold text-[#ca1551] hover:underline">
+                    View Full Gallery →
+                  </Link>
+                </div>
+
+                {pastCaptures.length === 0 ? (
+                  <div className="py-12 text-center text-gray-400 text-xs">
+                    No audits recorded yet. Run your first audit to see it here!
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden max-h-[480px] overflow-y-auto">
+                    {pastCaptures.map((c) => (
+                      <div
+                        key={c.id}
+                        onClick={() => selectPastCapture(c.id)}
+                        className="p-3 flex items-center justify-between hover:bg-pink-50/30 cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            {c.image_url ? (
+                              <img
+                                src={c.image_url}
+                                alt="Shelf"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <Camera size={14} className="text-gray-400" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs text-gray-900">{c.outlet_name}</p>
+                            <p className="text-[10px] text-gray-400">
+                              {c.created_at} · <span className="capitalize">{c.shelf_section}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="font-extrabold text-xs text-[#ca1551] block">{c.aci_shelf_share}%</span>
+                          <span className="text-[9px] text-gray-500">{c.total_facings} facings</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : analysisResult ? (
+              /* Active Result Tab */
               <div className="space-y-6">
+                {/* Outlet banner */}
+                <div className="p-3 bg-pink-50/50 border border-pink-100 rounded-xl flex items-center justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-gray-900">{analysisResult.outlet_name}</span>
+                    <span className="text-gray-400 text-[10px] block">
+                      Category: {analysisResult.shelf_section} · {analysisResult.created_at}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setRightTab("history")}
+                    className="text-[11px] font-bold text-[#ca1551] hover:underline"
+                  >
+                    Change Audit ({pastCaptures.length})
+                  </button>
+                </div>
+
+                {/* Photo Preview if image exists */}
+                {analysisResult.image_url && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={analysisResult.image_url}
+                        alt="Audited Shelf"
+                        className="h-14 w-20 object-cover rounded-lg border border-gray-200 shadow-sm"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                      <div>
+                        <p className="text-xs font-bold text-gray-800">Shelf Photo Verified</p>
+                        <p className="text-[10px] text-gray-400">Gemini VLM processed</p>
+                      </div>
+                    </div>
+                    <a
+                      href={analysisResult.image_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg text-[10px] font-bold text-gray-700"
+                    >
+                      View Photo ↗
+                    </a>
+                  </div>
+                )}
+
                 {/* Metrics Highlights */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-center">
@@ -660,7 +823,7 @@ export default function CaptureShelf() {
                     <Layers size={14} /> Audited Shelf SKUs ({analysisResult.detections?.length || 0})
                   </h3>
 
-                  <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+                  <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100 max-h-[260px] overflow-y-auto">
                     {analysisResult.detections?.map((d, idx) => (
                       <div key={idx} className="p-3 flex items-center justify-between hover:bg-gray-50 text-xs">
                         <div className="flex items-center gap-2.5">
@@ -698,10 +861,10 @@ export default function CaptureShelf() {
 
                 <div className="pt-2 flex justify-between items-center text-xs">
                   <Link
-                    href="/dashboard"
+                    href="/audits"
                     className="text-pink-600 hover:text-pink-700 font-bold flex items-center gap-1"
                   >
-                    View in Dashboard →
+                    View in Audit Gallery →
                   </Link>
                   <button
                     onClick={() => {
@@ -711,7 +874,7 @@ export default function CaptureShelf() {
                     }}
                     className="text-gray-500 hover:text-gray-700 font-semibold"
                   >
-                    Run Another Audit
+                    Clear Preview
                   </button>
                 </div>
               </div>
@@ -720,10 +883,18 @@ export default function CaptureShelf() {
                 <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center text-orange-500 mb-4">
                   <ImageIcon size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">No audit performed yet</h3>
-                <p className="text-sm text-gray-500 max-w-xs">
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Ready to Record Shelf Audit</h3>
+                <p className="text-sm text-gray-500 max-w-xs mb-4">
                   Upload a shelf photo to run Gemini vision detection, or enter manual facing counts to record authentic shelf data.
                 </p>
+                {pastCaptures.length > 0 && (
+                  <button
+                    onClick={() => setRightTab("history")}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold text-xs transition-colors flex items-center gap-1.5"
+                  >
+                    <History size={13} /> View Past Audits ({pastCaptures.length})
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AlertTriangle, Store, Box, RefreshCw, CheckCircle, ArrowRight, Key } from "lucide-react";
+import { AlertTriangle, Store, Box, RefreshCw, CheckCircle, ArrowRight, Key, Camera, Eye, Layers } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
+import AuditDetailModal from "@/components/AuditDetailModal";
 
 interface BrandShare {
   brand: string;
@@ -43,14 +44,23 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState<number | null>(null);
   const [user, setUser] = useState<{ has_api_key?: boolean; api_key_preview?: string } | null>(null);
+  const [recentCaptures, setRecentCaptures] = useState<any[]>([]);
+  const [selectedCaptureId, setSelectedCaptureId] = useState<number | null>(null);
 
   const loadDashboard = async () => {
     setLoading(true);
     try {
-      const res = await fetchWithAuth("/api/analytics/dashboard");
-      if (res.ok) {
-        const json = await res.json();
+      const [dashRes, capturesRes] = await Promise.all([
+        fetchWithAuth("/api/analytics/dashboard"),
+        fetchWithAuth("/api/captures?limit=6"),
+      ]);
+      if (dashRes.ok) {
+        const json = await dashRes.json();
         setData(json);
+      }
+      if (capturesRes.ok) {
+        const cJson = await capturesRes.json();
+        setRecentCaptures(cJson);
       }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
@@ -355,6 +365,122 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Recent Shelf Audits & Detections Section */}
+      <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-[#ca1551]">
+              <Camera size={16} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-gray-900">Recent Shelf Audits & VLM Detections</h2>
+              <p className="text-xs text-gray-500">
+                Click any store audit to view the captured shelf photo, facing breakdown, and Gemini VLM SKU detections
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/audits"
+            className="text-xs font-bold text-[#ca1551] hover:text-[#b01346] flex items-center gap-1 hover:underline"
+          >
+            View All Audits ({recentCaptures.length}) →
+          </Link>
+        </div>
+
+        {recentCaptures.length === 0 ? (
+          <div className="border border-dashed border-gray-200 rounded-xl p-8 text-center">
+            <Camera size={24} className="text-gray-400 mx-auto mb-2" />
+            <p className="text-xs font-bold text-gray-700">No shelf audits captured yet</p>
+            <p className="text-[11px] text-gray-400 mt-1 mb-3">
+              Take a shelf photo or record facing numbers to view audit results here anytime.
+            </p>
+            <Link
+              href="/capture"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#ca1551] text-white rounded-lg font-bold text-xs hover:bg-[#b01346] transition-colors"
+            >
+              Start First Audit →
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-4">
+            {recentCaptures.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => setSelectedCaptureId(c.id)}
+                className="group border border-gray-200 hover:border-pink-300 rounded-xl p-4 transition-all hover:shadow-md cursor-pointer flex flex-col justify-between bg-white hover:bg-pink-50/20"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-12 h-12 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex-shrink-0 relative">
+                        {c.image_url ? (
+                          <img
+                            src={c.image_url}
+                            alt="Shelf"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = "none";
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <Camera size={16} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-gray-900 group-hover:text-[#ca1551] transition-colors truncate">
+                          {c.outlet_name}
+                        </p>
+                        <p className="text-[10px] text-gray-400">{c.created_at}</p>
+                        <span className="inline-block mt-0.5 px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[9px] font-bold uppercase tracking-wider">
+                          {c.shelf_section}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <span className="text-xs font-black text-[#ca1551] block">{c.aci_shelf_share}%</span>
+                      <span className="text-[9px] text-gray-400">ACI Share</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-lg p-2.5 flex items-center justify-between text-[11px] mb-2">
+                    <span className="text-gray-600">
+                      Total: <strong className="text-gray-900">{c.total_facings} facings</strong>
+                    </span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-amber-700 font-semibold">
+                      ACI: {c.aci_facings}
+                    </span>
+                    <span className="text-gray-400">·</span>
+                    <span className="text-gray-500">
+                      Comp: {c.competitor_facings}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-600 group-hover:text-[#ca1551] transition-colors">
+                  <span className="text-[10px] text-gray-400 font-normal">
+                    {c.detections_count} SKUs detected
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Eye size={12} /> Inspect Detections →
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Audit Detail Modal */}
+      <AuditDetailModal
+        captureId={selectedCaptureId}
+        onClose={() => setSelectedCaptureId(null)}
+      />
     </div>
   );
 }

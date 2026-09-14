@@ -14,7 +14,8 @@ import {
   LogOut,
   Key,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Layers
 } from "lucide-react";
 import { logout, fetchWithAuth } from "@/lib/auth";
 
@@ -44,6 +45,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Insights", href: "/insights", icon: Lightbulb },
     { name: "Capture Shelf", href: "/capture", icon: Camera },
+    { name: "Audit History", href: "/audits", icon: Layers },
     { name: "Outlets", href: "/outlets", icon: Store },
     { name: "Products", href: "/products", icon: Package },
     { name: "Visits", href: "/visits", icon: MapPin },

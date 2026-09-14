@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Store, Plus, Search, MapPin, Phone, Calendar, Trash2, CheckCircle, X } from "lucide-react";
+import Link from "next/link";
+import { Store, Plus, Search, MapPin, Phone, Calendar, Trash2, CheckCircle, X, Camera, Eye } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
 
 interface Outlet {
@@ -260,18 +261,39 @@ export default function Outlets() {
                       {outlet.phone && <p className="text-gray-400">{outlet.phone}</p>}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-pink-50 text-pink-700">
-                        {outlet.audits_count} audits
-                      </span>
+                      {outlet.audits_count > 0 ? (
+                        <Link
+                          href={`/audits`}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-pink-50 text-pink-700 hover:bg-pink-100 transition-colors"
+                          title="Click to view audits for this outlet"
+                        >
+                          <Camera size={12} /> {outlet.audits_count} audits →
+                        </Link>
+                      ) : (
+                        <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                          0 audits
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleDeleteOutlet(outlet.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete outlet"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      <div className="flex items-center justify-end gap-1">
+                        {outlet.audits_count > 0 && (
+                          <Link
+                            href={`/audits`}
+                            className="p-1.5 text-gray-400 hover:text-[#ca1551] hover:bg-pink-50 rounded-lg transition-colors"
+                            title="View audit history"
+                          >
+                            <Eye size={15} />
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => handleDeleteOutlet(outlet.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete outlet"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
