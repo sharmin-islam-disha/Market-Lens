@@ -516,33 +516,85 @@ def get_dashboard_analytics(db: Session = Depends(get_db)):
 
 @router.get("/analytics/insights")
 def get_insights_analytics(db: Session = Depends(get_db)):
-    # 1. Stockout frequency by SKU
-    stockouts_by_sku = (
-        db.query(
-            models.Recommendation.sku_code,
-            models.Recommendation.sku_name,
-            func.count(models.Recommendation.id).label("count")
-        )
+    # 1. Stockout frequency by SKU (combines recommendations, OOS detections, and missing audited category SKUs)
+    stockout_map = {}
+
+    # Check recommendations
+    recs = (
+        db.query(models.Recommendation)
         .filter(models.Recommendation.issue_type == "Stock-out")
-        .group_by(models.Recommendation.sku_code, models.Recommendation.sku_name)
-        .order_by(func.count(models.Recommendation.id).desc())
         .all()
     )
+    for r in recs:
+        key = r.sku_name
+        if key not in stockout_map:
+            stockout_map[key] = {
+                "sku_code": r.sku_code or "SKU-OOS",
+                "sku_name": r.sku_name,
+                "frequency": 0,
+                "affected_outlets": set(),
+                "priority": r.priority or "High",
+            }
+        stockout_map[key]["frequency"] += 1
+        if r.outlet:
+            stockout_map[key]["affected_outlets"].add(r.outlet.name)
 
-    stockouts_summary = []
-    for code, name, cnt in stockouts_by_sku:
-        affected_outlets = [
-            r.outlet.name for r in db.query(models.Recommendation)
-            .filter(models.Recommendation.sku_code == code)
-            .all() if r.outlet
-        ]
-        stockouts_summary.append({
-            "sku_code": code,
-            "sku_name": name,
-            "frequency": cnt,
-            "affected_outlets": list(set(affected_outlets)),
-            "priority": "High" if cnt >= 2 else "Medium",
-        })
+    # Check direct detections flagged as out of stock
+    oos_dets = (
+        db.query(models.Detection)
+        .join(models.ShelfCapture)
+        .filter((models.Detection.is_out_of_stock == True) | (models.Detection.facing_count == 0))
+        .all()
+    )
+    for d in oos_dets:
+        key = d.sku_name
+        if key not in stockout_map:
+            stockout_map[key] = {
+                "sku_code": d.product.sku_code if d.product else f"SKU-{d.id}",
+                "sku_name": d.sku_name,
+                "frequency": 0,
+                "affected_outlets": set(),
+                "priority": "High" if d.is_aci else "Medium",
+            }
+        stockout_map[key]["frequency"] += 1
+        if d.capture and d.capture.outlet:
+            stockout_map[key]["affected_outlets"].add(d.capture.outlet.name)
+
+    # Check audited categories for missing ACI portfolio products
+    captures = db.query(models.ShelfCapture).all()
+    for cap in captures:
+        if not cap.outlet:
+            continue
+        section_aci_prods = (
+            db.query(models.Product)
+            .filter(models.Product.category == cap.shelf_section, models.Product.is_aci == True)
+            .all()
+        )
+        detected_names = set(d.sku_name.lower() for d in cap.detections)
+        for p in section_aci_prods:
+            if not any(p.name.lower() in d_name or d_name in p.name.lower() for d_name in detected_names):
+                key = p.name
+                if key not in stockout_map:
+                    stockout_map[key] = {
+                        "sku_code": p.sku_code,
+                        "sku_name": p.name,
+                        "frequency": 0,
+                        "affected_outlets": set(),
+                        "priority": "High",
+                    }
+                stockout_map[key]["frequency"] += 1
+                stockout_map[key]["affected_outlets"].add(cap.outlet.name)
+
+    stockouts_summary = [
+        {
+            "sku_code": v["sku_code"],
+            "sku_name": v["sku_name"],
+            "frequency": v["frequency"],
+            "affected_outlets": sorted(list(v["affected_outlets"])),
+            "priority": v["priority"],
+        }
+        for v in sorted(stockout_map.values(), key=lambda x: x["frequency"], reverse=True)
+    ]
 
     # 2. Price compliance & variance (MRP vs observed price)
     products = db.query(models.Product).all()
@@ -550,7 +602,11 @@ def get_insights_analytics(db: Session = Depends(get_db)):
     for p in products:
         observed = (
             db.query(func.avg(models.Detection.observed_price))
-            .filter(models.Detection.sku_name.ilike(f"%{p.name}%"))
+            .filter(
+                (models.Detection.product_id == p.id) | 
+                models.Detection.sku_name.ilike(f"%{p.name}%")
+            )
+            .filter(models.Detection.observed_price.isnot(None))
             .scalar()
         )
         if observed:
