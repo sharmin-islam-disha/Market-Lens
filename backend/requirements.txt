@@ -4,3 +4,7 @@ httpx
 python-dotenv
 google-generativeai
 pydantic-settings
+sqlalchemy
+passlib[bcrypt]
+pyjwt
+python-multipart

@@ -7,7 +7,7 @@ REQUEST_TIMEOUT = 10.0
 
 def detect_provider(api_key: str) -> str | None:
     """Detect AI provider by API key prefix conventions."""
-    if api_key.startswith("AIza"):
+    if api_key and (api_key.startswith("AIza") or api_key.startswith("AQ.") or len(api_key) >= 15):
         return "gemini"
     return None
 

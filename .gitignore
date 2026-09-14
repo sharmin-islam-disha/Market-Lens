@@ -93,3 +93,8 @@ coverage/
 # Misc
 *.pem
 .vercel
+*.db
+backend/marketlens.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+docker-data/
