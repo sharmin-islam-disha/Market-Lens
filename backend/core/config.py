@@ -8,8 +8,7 @@ class Settings(BaseSettings):
     # Read ALLOWED_ORIGINS as a string, we will split it in main.py
     ALLOWED_ORIGINS: str = "*"
     
-    # AI Keys and Model
-    GEMINI_API_KEY: str | None = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    # AI Model
     GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 
     class Config:

@@ -312,12 +312,6 @@ async def analyze_capture(
             pass
 
     if not resolved_api_key:
-        from core.config import settings
-        env_key = settings.GEMINI_API_KEY
-        if _is_valid_key(env_key):
-            resolved_api_key = env_key
-
-    if not resolved_api_key:
         raise HTTPException(
             status_code=400,
             detail="A valid Google Gemini API Key is required for vision analysis. Please provide your Gemini API key in the form or save it in your account settings."
