@@ -111,8 +111,6 @@ services:
     image: nginx:alpine
     container_name: marketlens_prod_nginx
     restart: unless-stopped
-    ports:
-      - "8081:80"
     expose:
       - "80"
     volumes:
