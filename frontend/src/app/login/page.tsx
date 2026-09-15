@@ -52,21 +52,21 @@ export default function Login() {
           <div className="rounded-md shadow-sm space-y-4">
             <input
               type="text" required placeholder="Staff ID"
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-[#ca1551] focus:border-[#ca1551] sm:text-sm"
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
             />
             <input
               type="password" required placeholder="Password (Staff ID)"
-              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-[#ca1551] focus:border-[#ca1551] sm:text-sm"
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             />
           </div>
-          <button type="submit" className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+          <button type="submit" className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#ca1551] hover:bg-[#a61142]">
             Sign in
           </button>
         </form>
         <p className="text-center text-sm text-gray-600">
-          Need an account? <Link href="/register" className="text-indigo-600 hover:text-indigo-500">Register</Link>
+          Need an account? <Link href="/register" className="text-[#ca1551] hover:text-[#a61142]">Register</Link>
         </p>
       </div>
     </div>

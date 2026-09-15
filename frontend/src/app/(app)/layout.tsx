@@ -63,7 +63,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Camera size={24} className="text-white" />
               </div>
               <div>
-                <h1 className="font-bold text-lg leading-tight tracking-wide">ACI Retail</h1>
+                <h1 className="font-bold text-lg leading-tight tracking-wide">MarketLens</h1>
                 <p className="text-[10px] tracking-widest text-white/80 font-medium uppercase">Execution Intelligence</p>
               </div>
             </div>

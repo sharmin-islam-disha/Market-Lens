@@ -52,14 +52,14 @@ export default function Onboarding() {
           <div className="rounded-md shadow-sm space-y-4">
             <input
               type="text" required placeholder="Gemini API Key (AIza... or AQ...)"
-              className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-[#ca1551] focus:border-[#ca1551] sm:text-sm"
               onChange={(e) => setApiKey(e.target.value)}
             />
           </div>
           <button 
             type="submit" 
             disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-[#ca1551] hover:bg-[#a61142] disabled:opacity-50"
           >
             {loading ? "Validating..." : "Save and Continue"}
           </button>

@@ -1,4 +1,21 @@
 services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_USER:-marketlens_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret_db_password}
+      POSTGRES_DB: ${DB_NAME:-marketlens_db}
+    volumes:
+      - ./docker-data/postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-marketlens_user} -d ${DB_NAME:-marketlens_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   frontend:
     build:
       context: ./frontend
@@ -8,7 +25,6 @@ services:
     env_file:
       - .env
     environment:
-      # Internal URL for Next.js to reach FastAPI via Docker's internal network
       - BACKEND_URL=http://backend:8000
     depends_on:
       - backend
@@ -23,8 +39,10 @@ services:
     env_file:
       - .env
     environment:
-      # Allow all origins inside Docker for cross-container / proxy communication
       - ALLOWED_ORIGINS=*
+    depends_on:
+      db:
+        condition: service_healthy
     volumes:
       - ./backend/uploads:/app/uploads
     restart: unless-stopped
