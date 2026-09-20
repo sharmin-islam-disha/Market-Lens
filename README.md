@@ -1,79 +1,110 @@
-# MarketLens — Production Orchestration & Deployment
+# MarketLens — Production Deployment
 
-This branch contains the thin production orchestration manifests, reverse proxy rules, database migration schemas, and observability scrapers for **MarketLens** (ACI Retail Execution Intelligence).
+Production orchestration for **MarketLens** (ACI Retail Execution Intelligence).
+
+Maintainer: sharmin.islam@aci-bd.com
 
 ---
 
-## 1. Architecture Overview
+## Repository Structure
 
-- **Frontend**: Next.js 16 Standalone Container (serving SSR and static assets)
-- **Backend**: FastAPI Application (JWT authentication, Gemini multimodal VLM integration, analytics)
-- **Database**: PostgreSQL 17
-- **Reverse Proxy**: Nginx Alpine (`ports: 8081:80`, `acimisai_tunnel_network` edge routing)
-- **Observability (Optional Profile)**: Prometheus + Grafana (`--profile monitoring`)
-
-```text
-├── .gitignore
-├── README.md
-├── build_push.sh
-├── data/
-│   └── init.sql
-├── env.example
+```
+deploy branch
+├── prod.docker-compose.yml   # Production stack (pull from registry, no local build)
+├── env.example               # Environment variable template
 ├── nginx/
-│   └── nginx.conf
-├── prod.docker-compose.yml
-└── prometheus/
-    └── prometheus.yml
+│   └── nginx.conf            # Nginx server block (mounted to conf.d/default.conf)
+├── data/
+│   └── init.sql              # DB schema + seed data — run once on first deploy
+├── DEPLOY-COMPOSE-GUIDE.md   # ACI standard compose guide
+└── README.md
 ```
 
 ---
 
-## 2. Quickstart Deployment Guide
+## Seed Data
 
-### Step 1: Clone & Checkout Deploy Branch
+The file `data/init.sql` contains the full PostgreSQL schema and initial seed data:
+
+- **Tables**: `users`, `outlets`, `products`, `visits`, `shelf_captures`, `detections`, `recommendations`
+- **Seed**: 1 supervisor user (`staff_id: supervisor`, password: `supervisor`) + 18 FMCG product SKUs (ACI + competitors)
+
+> **Run once on first deploy** after provisioning the central DB (see Step 2 below).
+
+---
+
+## Deployment Steps
+
+### Step 1 — Provision the Central Database
+
 ```bash
-git clone <repository_url>
-cd MarketLens
-git checkout deploy
+cd /office/production_deployment/central-db/postgres
+./pcc marketlens
 ```
 
-### Step 2: Configure Environment
+Copy the output credentials into your `.env` file.
+
+### Step 2 — Load Schema and Seed Data
+
+```bash
+docker exec -i pg_central psql -U marketlens_owner -d marketlens < data/init.sql
+```
+
+This creates all tables and inserts the initial supervisor user and product catalog. Only needed on first deploy — skip on updates.
+
+### Step 3 — Configure Environment
+
 ```bash
 cp env.example .env
-chmod 600 .env
-nano .env
+nano .env   # fill in DATABASE_URL, SECRET_KEY, GEMINI_API_KEY, IMAGE_TAG
 ```
 
-### Step 3: Setup Storage & File Permissions
-```bash
-mkdir -p docker-data/postgres_data
-chmod o+rx ./prometheus
-chmod o+r ./prometheus/prometheus.yml
-```
+### Step 4 — Pull Images and Start
 
-### Step 4: Launch Application Stack
-
-#### Core Stack (Nginx + Frontend + Backend + PostgreSQL):
 ```bash
+docker compose -f prod.docker-compose.yml pull
 docker compose -f prod.docker-compose.yml up -d
 ```
 
-#### Full Stack with Monitoring (Prometheus + Grafana):
-```bash
-docker compose -f prod.docker-compose.yml --profile monitoring up -d
-```
+### Step 5 — Verify
 
-### Step 5: Verify Health Status
 ```bash
 docker compose -f prod.docker-compose.yml ps
 ```
 
+All containers (`marketlens_backend_prod`, `marketlens_frontend_prod`, `marketlens_nginx_prod`) should show `healthy`.
+
 ---
 
-## 3. Production Ports & Access
+## Updating to a New Image Version
 
-- **Web Application / Nginx**: `http://localhost:8081` (Direct host access)
-- **Edge Tunnel**: Internal port `80` connected to `acimisai_tunnel_network`
-- **Edge Healthcheck**: `http://localhost:8081/healthz`
-- **Grafana Dashboard** (when monitoring active): `http://localhost:3000`
-- **Prometheus Scraper** (when monitoring active): `http://localhost:9090`
+```bash
+# 1. Update IMAGE_TAG in .env
+nano .env   # set IMAGE_TAG=v2
+
+# 2. Pull new images and recreate containers
+docker compose -f prod.docker-compose.yml pull
+docker compose -f prod.docker-compose.yml up -d --force-recreate
+```
+
+---
+
+## Networks
+
+| Network | Purpose |
+|---|---|
+| `marketlens-net` | Internal bridge between backend, frontend, nginx |
+| `pg_central_net` | Backend → central PostgreSQL via PgBouncer |
+| `monitoring_central_net` | Backend → central Prometheus (scrapes `/metrics`) |
+| `acimisai_tunnel_network` | Nginx → Cloudflare tunnel (public ingress) |
+
+---
+
+## Default Credentials (from seed data)
+
+| Field | Value |
+|---|---|
+| Staff ID | `supervisor` |
+| Password | `supervisor` |
+
+> Change the supervisor password after first login.
