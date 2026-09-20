@@ -2,9 +2,9 @@ name: marketlens-prod
 
 services:
   marketlens-backend:
-    image: registry.acimisai.com/marketlens-backend:v1
+    image: registry.acimisai.com/marketlens-backend:${IMAGE_TAG:-v1}
     platform: linux/amd64
-    container_name: marketlens_prod_backend
+    container_name: marketlens_backend_prod
     restart: unless-stopped
     env_file:
       - .env
@@ -28,9 +28,9 @@ services:
           - backend
 
   marketlens-frontend:
-    image: registry.acimisai.com/marketlens-frontend:v1
+    image: registry.acimisai.com/marketlens-frontend:${IMAGE_TAG:-v1}
     platform: linux/amd64
-    container_name: marketlens_prod_frontend
+    container_name: marketlens_frontend_prod
     restart: unless-stopped
     env_file:
       - .env
@@ -56,7 +56,7 @@ services:
 
   marketlens-prometheus:
     image: prom/prometheus:latest
-    container_name: marketlens_prod_prometheus
+    container_name: marketlens_prometheus_prod
     restart: unless-stopped
     env_file:
       - .env
@@ -80,7 +80,7 @@ services:
 
   marketlens-grafana:
     image: grafana/grafana:latest
-    container_name: marketlens_prod_grafana
+    container_name: marketlens_grafana_prod
     restart: unless-stopped
     env_file:
       - .env
@@ -105,7 +105,7 @@ services:
 
   marketlens-nginx:
     image: nginx:alpine
-    container_name: marketlens_prod_nginx
+    container_name: marketlens_nginx_prod
     restart: unless-stopped
     env_file:
       - .env
