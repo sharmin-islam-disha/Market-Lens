@@ -7,12 +7,16 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    gmail = Column(String, unique=True, index=True)
     staff_id = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    full_name = Column(String, index=True)
+    name = Column(String, nullable=True)
+    gmail = Column(String, nullable=True)
     hashed_password = Column(String)
     gemini_api_key = Column(String, nullable=True)
-    
+    is_supervisor = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
     visits = relationship("Visit", back_populates="user")
     captures = relationship("ShelfCapture", back_populates="user")
 

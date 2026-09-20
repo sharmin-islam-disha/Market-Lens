@@ -5,15 +5,19 @@ services:
     image: postgres:17
     container_name: marketlens_prod_postgres
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - ./docker-data/postgres_data:/var/lib/postgresql/data
       - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,18 +29,27 @@ services:
 
   marketlens-backend:
     image: registry.acimisai.com/marketlens-backend:v1
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     container_name: marketlens_prod_backend
     restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     environment:
+      - PORT=${BACKEND_PORT:-8000}
       - DATABASE_URL=${DATABASE_URL}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_ORIGINS=*
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     depends_on:
       marketlens-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://127.0.0.1:8000/openapi.json\")' || exit 1"]
+      test: ["CMD-SHELL", "python -c 'import urllib.request, os; urllib.request.urlopen(\"http://127.0.0.1:\" + str(os.environ.get(\"PORT\", 8000)) + \"/openapi.json\")' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,15 +61,25 @@ services:
 
   marketlens-frontend:
     image: registry.acimisai.com/marketlens-frontend:v1
+    platform: linux/amd64
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     container_name: marketlens_prod_frontend
     restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - PORT=${FRONTEND_PORT:-3000}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:${BACKEND_PORT:-8000}}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api}
     depends_on:
       marketlens-backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:$$PORT/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -70,6 +93,10 @@ services:
     image: prom/prometheus:latest
     container_name: marketlens_prod_prometheus
     restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     depends_on:
@@ -90,6 +117,10 @@ services:
     image: grafana/grafana:latest
     container_name: marketlens_prod_grafana
     restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
@@ -111,8 +142,10 @@ services:
     image: nginx:alpine
     container_name: marketlens_prod_nginx
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - "8081:80"
+      - "${NGINX_PORT:-8081}:80"
     expose:
       - "80"
     volumes:

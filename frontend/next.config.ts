@@ -1,20 +1,21 @@
 import type { NextConfig } from "next";
 
+const backendHost = process.env.BACKEND_HOST || "backend";
+const backendPort = process.env.BACKEND_PORT || "8000";
+const defaultBackendUrl = `http://${backendHost}:${backendPort}`;
+const targetBackend = (process.env.BACKEND_URL || defaultBackendUrl).replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
   output: "standalone",
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: process.env.BACKEND_URL 
-          ? `${process.env.BACKEND_URL}/api/:path*` 
-          : "http://backend:8000/api/:path*", // Default for docker-compose network
+        destination: `${targetBackend}/api/:path*`,
       },
       {
         source: "/uploads/:path*",
-        destination: process.env.BACKEND_URL 
-          ? `${process.env.BACKEND_URL}/uploads/:path*` 
-          : "http://backend:8000/uploads/:path*",
+        destination: `${targetBackend}/uploads/:path*`,
       },
     ];
   },

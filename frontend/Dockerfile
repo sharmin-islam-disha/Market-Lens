@@ -23,7 +23,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME="0.0.0.0"
-ENV PORT=3000
 
 # Copy necessary files from builder
 COPY --from=builder /app/next.config.ts ./
@@ -31,8 +30,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Expose port
-EXPOSE 3000
-
-# Start the application
+# Start the application using dynamic runtime PORT
 CMD ["node", "server.js"]
+

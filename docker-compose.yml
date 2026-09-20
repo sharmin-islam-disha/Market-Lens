@@ -5,44 +5,60 @@ services:
     env_file:
       - .env
     environment:
-      POSTGRES_USER: ${DB_USER:-marketlens_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret_db_password}
-      POSTGRES_DB: ${DB_NAME:-marketlens_db}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT:-5432}:5432"
     volumes:
       - ./docker-data/postgres_local_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-marketlens_user} -d ${DB_NAME:-marketlens_db}"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    environment:
-      - BACKEND_URL=http://backend:8000
-    depends_on:
-      - backend
-    restart: unless-stopped
+      start_period: 5s
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:${BACKEND_PORT:-8000}"
     env_file:
       - .env
     environment:
-      - ALLOWED_ORIGINS=*
+      - PORT=${BACKEND_PORT:-8000}
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request, os; urllib.request.urlopen(\"http://127.0.0.1:\" + str(os.environ.get(\"PORT\", 8000)) + \"/openapi.json\")' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./backend/uploads:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "${FRONTEND_PORT:-3000}:${FRONTEND_PORT:-3000}"
+    env_file:
+      - .env
+    environment:
+      - PORT=${FRONTEND_PORT:-3000}
+      - BACKEND_URL=${BACKEND_URL:-http://backend:${BACKEND_PORT:-8000}}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api}
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped

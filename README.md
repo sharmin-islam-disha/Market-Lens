@@ -1,79 +1,64 @@
-# MarketLens — Production Orchestration & Deployment
+# MarketLens — ACI Retail Execution Intelligence
 
-This branch contains the thin production orchestration manifests, reverse proxy rules, database migration schemas, and observability scrapers for **MarketLens** (ACI Retail Execution Intelligence).
+MarketLens is a containerized AI-powered retail execution platform. It features an automated Gemini VLM vision audit pipeline, staff BYOK onboarding, FMCG product catalog analytics, and an integrated PostgreSQL data store.
 
 ---
 
 ## 1. Architecture Overview
 
-- **Frontend**: Next.js 16 Standalone Container (serving SSR and static assets)
-- **Backend**: FastAPI Application (JWT authentication, Gemini multimodal VLM integration, analytics)
-- **Database**: PostgreSQL 17
-- **Reverse Proxy**: Nginx Alpine (`ports: 8081:80`, `acimisai_tunnel_network` edge routing)
-- **Observability (Optional Profile)**: Prometheus + Grafana (`--profile monitoring`)
+The entire application runs strictly through Docker:
 
-```text
-├── .gitignore
-├── README.md
-├── build_push.sh
-├── data/
-│   └── init.sql
-├── env.example
-├── nginx/
-│   └── nginx.conf
-├── prod.docker-compose.yml
-└── prometheus/
-    └── prometheus.yml
-```
+- **Frontend Container**: Next.js 16 Standalone (serving UI on `${FRONTEND_PORT}`)
+- **Backend Container**: FastAPI + Uvicorn (serving REST API and AI pipeline on `${BACKEND_PORT}`)
+- **Database Container**: PostgreSQL 15/17 (storing models, captures, audits on `${DB_PORT}`)
+- **Reverse Proxy (Production)**: Nginx Alpine (routing ingress on `${NGINX_PORT}`)
+- **Observability (Optional Profile)**: Prometheus + Grafana (`--profile monitoring`)
 
 ---
 
-## 2. Quickstart Deployment Guide
+## 2. Quickstart: Run Everything with Docker
 
-### Step 1: Clone & Checkout Deploy Branch
+### Step 1: Configure Environment Variables
+Copy the template and verify your ports:
 ```bash
-git clone <repository_url>
-cd MarketLens
-git checkout deploy
+cp .env.example .env
+```
+All ports are customizable in `.env` and can be adapted to any machine:
+```env
+FRONTEND_PORT=3000
+BACKEND_PORT=8000
+DB_PORT=5432
+NGINX_PORT=8081
+NEXT_PUBLIC_API_URL=/api
 ```
 
-### Step 2: Configure Environment
+### Step 2: Build & Start the Entire Stack
+Run all services (Frontend, Backend, and PostgreSQL) via Docker Compose:
 ```bash
-cp env.example .env
-chmod 600 .env
-nano .env
+docker compose up --build
+```
+To run in detached background mode:
+```bash
+docker compose up -d --build
 ```
 
-### Step 3: Setup Storage & File Permissions
-```bash
-mkdir -p docker-data/postgres_data
-chmod o+rx ./prometheus
-chmod o+r ./prometheus/prometheus.yml
-```
+### Step 3: Access the Application
+- **Frontend Application**: `http://localhost:${FRONTEND_PORT}` (Default: `http://localhost:3000`)
+- **Backend API & Swagger Docs**: `http://localhost:${BACKEND_PORT}/docs` (Default: `http://localhost:8000/docs`)
 
-### Step 4: Launch Application Stack
+---
 
-#### Core Stack (Nginx + Frontend + Backend + PostgreSQL):
+## 3. Production Deployment (Reverse Proxy & Ingress)
+
+For production deployments with Nginx and edge networking:
 ```bash
 docker compose -f prod.docker-compose.yml up -d
 ```
-
-#### Full Stack with Monitoring (Prometheus + Grafana):
+With monitoring enabled:
 ```bash
 docker compose -f prod.docker-compose.yml --profile monitoring up -d
 ```
-
-### Step 5: Verify Health Status
+To check container status:
 ```bash
-docker compose -f prod.docker-compose.yml ps
+docker compose ps
 ```
-
----
-
-## 3. Production Ports & Access
-
-- **Web Application / Nginx**: `http://localhost:8081` (Direct host access)
-- **Edge Tunnel**: Internal port `80` connected to `acimisai_tunnel_network`
-- **Edge Healthcheck**: `http://localhost:8081/healthz`
-- **Grafana Dashboard** (when monitoring active): `http://localhost:3000`
-- **Prometheus Scraper** (when monitoring active): `http://localhost:9090`

@@ -59,9 +59,11 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     
     hashed_password = security.get_password_hash(user.staff_id)
     db_user = models.User(
-        name=user.get_name(), 
-        gmail=reg_email, 
-        staff_id=user.staff_id, 
+        name=user.get_name(),
+        full_name=user.get_name(),
+        gmail=reg_email,
+        email=reg_email,
+        staff_id=user.staff_id,
         hashed_password=hashed_password
     )
     db.add(db_user)
@@ -121,13 +123,13 @@ def _build_user_profile(current_user: models.User):
         k = current_user.gemini_api_key.strip()
         preview = f"{k[:6]}...{k[-4:]}"
     return {
-        "name": current_user.name, 
-        "full_name": current_user.name,
-        "gmail": current_user.gmail, 
-        "email": current_user.gmail,
-        "staff_id": current_user.staff_id, 
+        "name": current_user.full_name or current_user.name,
+        "full_name": current_user.full_name or current_user.name,
+        "gmail": current_user.gmail or current_user.email,
+        "email": current_user.email or current_user.gmail,
+        "staff_id": current_user.staff_id,
         "has_api_key": has_key,
-        "is_supervisor": False,
+        "is_supervisor": current_user.is_supervisor or False,
         "api_key_status": "Valid" if has_key else "Not Configured",
         "api_key_preview": preview
     }
