@@ -1,38 +1,9 @@
 name: marketlens-prod
 
 services:
-  marketlens-db:
-    image: postgres:17
-    container_name: marketlens_prod_postgres
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "${DB_PORT:-5432}:5432"
-    volumes:
-      - ./docker-data/postgres_data:/var/lib/postgresql/data
-      - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      marketlens-net:
-        aliases:
-          - db
-
   marketlens-backend:
     image: registry.acimisai.com/marketlens-backend:v1
     platform: linux/amd64
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
     container_name: marketlens_prod_backend
     restart: unless-stopped
     env_file:
@@ -45,9 +16,6 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - SECRET_KEY=${SECRET_KEY}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-    depends_on:
-      marketlens-db:
-        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "python -c 'import urllib.request, os; urllib.request.urlopen(\"http://127.0.0.1:\" + str(os.environ.get(\"PORT\", 8000)) + \"/openapi.json\")' || exit 1"]
       interval: 10s
@@ -62,9 +30,6 @@ services:
   marketlens-frontend:
     image: registry.acimisai.com/marketlens-frontend:v1
     platform: linux/amd64
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
     container_name: marketlens_prod_frontend
     restart: unless-stopped
     env_file:
