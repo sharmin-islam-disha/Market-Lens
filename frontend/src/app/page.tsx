@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { getToken } from "@/lib/auth";
+import { InstallButton, InstallHeroCTA } from "@/components/InstallPrompt";
 
 export default function Home() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function Home() {
           <a href="#about" className="hover:text-[#ca1551] transition-colors">About</a>
         </nav>
         <div className="flex items-center gap-3">
+          <InstallButton />
           <Link href="/login" className="text-sm font-semibold text-gray-700 hover:text-[#ca1551] transition-colors px-4 py-2">
             Sign In
           </Link>
@@ -65,6 +67,7 @@ export default function Home() {
               <Link href="/login" className="px-7 py-3.5 border border-gray-200 hover:border-[#ca1551] text-gray-700 hover:text-[#ca1551] font-bold rounded-xl transition-colors text-sm">
                 Sign In →
               </Link>
+              <InstallHeroCTA />
             </div>
             <p className="text-xs text-gray-400 mt-4">For ACI field representatives and supervisors.</p>
           </div>
