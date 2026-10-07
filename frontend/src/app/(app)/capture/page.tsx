@@ -60,7 +60,8 @@ export default function CaptureShelf() {
   const [auditMode, setAuditMode] = useState<"ai" | "manual">("ai");
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [selectedOutlet, setSelectedOutlet] = useState<string>("");
-  const [section, setSection] = useState<string>("staples");
+  const [section, setSection] = useState<string>("");
+  const [categories, setCategories] = useState<string[]>([]);
   const [fieldNotes, setFieldNotes] = useState<string>("");
   const [apiKeyInput, setApiKeyInput] = useState<string>("");
   const [catalogSkus, setCatalogSkus] = useState<Product[]>([]);
@@ -127,6 +128,14 @@ export default function CaptureShelf() {
         }
       })
       .catch((err) => console.error("Failed to load outlets:", err));
+
+    fetchWithAuth("/api/categories")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: string[]) => {
+        setCategories(data);
+        if (data.length > 0) setSection(data[0]);
+      })
+      .catch(() => {});
 
     fetchWithAuth("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
@@ -226,7 +235,7 @@ export default function CaptureShelf() {
         loadPastCaptures(false);
       } else {
         const errJson = await res.json().catch(() => ({}));
-        setError(errJson.detail || "AI vision detection failed. Please check your Gemini API key.");
+        setError(errJson.detail || "AI vision detection failed. Please check your AI API key.");
       }
     } catch (err: any) {
       setError(err.message || "Network error occurred during vision analysis.");
@@ -313,7 +322,7 @@ export default function CaptureShelf() {
                 : "text-gray-500 hover:text-gray-900"
             }`}
           >
-            <Camera size={14} /> Gemini 3.8 Flash AI
+            <Camera size={14} /> AI Vision Audit
           </button>
           <button
             onClick={() => {
@@ -341,11 +350,11 @@ export default function CaptureShelf() {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-gray-900">
-                  {auditMode === "ai" ? "Gemini 3.8 Flash Vision Audit" : "Field Rep Manual Audit"}
+                  {auditMode === "ai" ? "AI Vision Audit" : "Field Rep Manual Audit"}
                 </h2>
                 <p className="text-[10px] text-gray-500">
                   {auditMode === "ai"
-                    ? "Multimodal VLM (gemini-3.8-flash) analyzes real shelf image"
+                    ? "Multimodal VLM analyzes real shelf image"
                     : "Enter verified facing numbers observed in store"}
                 </p>
               </div>
@@ -401,21 +410,24 @@ export default function CaptureShelf() {
                 onChange={(e) => setSection(e.target.value)}
                 className="w-full md:w-1/2 bg-white border border-gray-300 text-gray-900 py-2.5 px-4 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-pink-500"
               >
-                <option value="staples">Staples (Atta, Maida, Sugar)</option>
-                <option value="cooking">Cooking (Salt, Edible Oil, Spices)</option>
-                <option value="beverages">Beverages (Tea, Juices)</option>
-                <option value="spices">Spices & Seasonings</option>
+                {categories.length === 0 ? (
+                  <option value="">No categories available</option>
+                ) : (
+                  categories.map((cat) => (
+                    <option key={cat} value={cat} className="capitalize">{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                  ))
+                )}
               </select>
             </div>
 
             {/* AI Vision Mode Content */}
             {auditMode === "ai" ? (
               <>
-                {/* Gemini API Key Input */}
+                {/* AI API Key Input */}
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                      <Key size={13} /> Gemini API Key
+                      <Key size={13} /> AI API Key
                     </label>
                     {hasApiKey ? (
                       <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
@@ -525,11 +537,11 @@ export default function CaptureShelf() {
                   {analyzing ? (
                     <>
                       <RefreshCw size={18} className="animate-spin" />
-                      Analyzing Photo with Gemini Vision AI...
+                      Analyzing Photo with AI Vision...
                     </>
                   ) : (
                     <>
-                      <PlayCircle size={18} /> Run AI Analysis (Gemini 3.8 Flash)
+                      <PlayCircle size={18} /> Run AI Vision Analysis
                     </>
                   )}
                 </button>
@@ -778,7 +790,7 @@ export default function CaptureShelf() {
                       />
                       <div>
                         <p className="text-xs font-bold text-gray-800">Shelf Photo Verified</p>
-                        <p className="text-[10px] text-gray-400">Gemini VLM processed</p>
+                        <p className="text-[10px] text-gray-400">AI Vision processed</p>
                       </div>
                     </div>
                     <a
@@ -885,7 +897,7 @@ export default function CaptureShelf() {
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2">Ready to Record Shelf Audit</h3>
                 <p className="text-sm text-gray-500 max-w-xs mb-4">
-                  Upload a shelf photo to run Gemini vision detection, or enter manual facing counts to record authentic shelf data.
+                  Upload a shelf photo to run AI vision detection, or enter manual facing counts to record authentic shelf data.
                 </p>
                 {pastCaptures.length > 0 && (
                   <button

@@ -25,7 +25,7 @@ export default function Onboarding() {
 
     setLoading(false);
     if (res.ok) {
-      setSuccess("✓ Valid API Key! Live Google Gemini verification passed. Redirecting to Dashboard...");
+      setSuccess("✓ Valid API Key! Verification passed. Redirecting to Dashboard...");
       setTimeout(() => {
         router.push("/dashboard");
       }, 1200);
@@ -40,7 +40,7 @@ export default function Onboarding() {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
         <h2 className="text-center text-3xl font-extrabold text-gray-900">Setup Required</h2>
         <p className="text-center text-sm text-gray-500">
-          Please provide your Gemini API key to activate shelf analysis features.
+          Please provide your AI API key to activate shelf analysis features.
         </p>
         {error && <p className="text-red-500 text-sm text-center">{error}</p>}
         {success && (
@@ -51,7 +51,7 @@ export default function Onboarding() {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">
             <input
-              type="text" required placeholder="Gemini API Key (AIza... or AQ...)"
+              type="text" required placeholder="AI API Key (AIza...)"
               className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-[#ca1551] focus:border-[#ca1551] sm:text-sm"
               onChange={(e) => setApiKey(e.target.value)}
             />

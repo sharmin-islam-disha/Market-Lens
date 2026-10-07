@@ -101,7 +101,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Gemini AI Key Status Badge */}
+          {/* AI Key Status Badge */}
           <div className="mt-4 px-4">
             <div className={`p-3.5 rounded-xl backdrop-blur-sm border transition-all ${
               user?.has_api_key 
@@ -111,7 +111,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-1.5">
                   <span className={`w-2 h-2 rounded-full ${user?.has_api_key ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}></span>
-                  <span className="text-[11px] font-bold tracking-wider uppercase">Gemini AI</span>
+                  <span className="text-[11px] font-bold tracking-wider uppercase">AI Vision</span>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                   user?.has_api_key ? "bg-emerald-500/30 text-emerald-200 border border-emerald-400/40" : "bg-amber-500/30 text-amber-200 border border-amber-400/40"
@@ -121,7 +121,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
               <p className="text-[11px] font-medium text-white/90 flex items-center gap-1.5">
                 <Key size={12} className={user?.has_api_key ? "text-emerald-300" : "text-amber-300"} />
-                <span>{user?.has_api_key ? `Connected (${user.api_key_preview || "Active"})` : "Setup in Onboarding"}</span>
+                <span>{user?.has_api_key ? "API Key Connected" : "Setup in Onboarding"}</span>
               </p>
             </div>
           </div>

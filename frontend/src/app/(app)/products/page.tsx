@@ -28,7 +28,7 @@ export default function Products() {
     sku_code: "",
     name: "",
     brand: "ACI",
-    category: "staples",
+    category: "",
     is_aci: true,
     mrp: 100.0,
     target_shelf_share: 30.0,
@@ -73,7 +73,7 @@ export default function Products() {
           sku_code: "",
           name: "",
           brand: "ACI",
-          category: "staples",
+          category: "",
           is_aci: true,
           mrp: 100.0,
           target_shelf_share: 30.0,
@@ -392,16 +392,18 @@ export default function Products() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1">Category *</label>
-                  <select
+                  <input
+                    type="text"
+                    required
+                    list="category-options"
+                    placeholder="e.g. staples, cooking..."
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  >
-                    <option value="staples">Staples</option>
-                    <option value="cooking">Cooking</option>
-                    <option value="beverages">Beverages</option>
-                    <option value="spices">Spices</option>
-                  </select>
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value.toLowerCase() })}
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-sm font-medium text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  />
+                  <datalist id="category-options">
+                    {categories.map((c) => <option key={c} value={c} />)}
+                  </datalist>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-800 mb-1">Is ACI Portfolio?</label>

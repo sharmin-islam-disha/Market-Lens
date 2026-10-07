@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "*"
     
     # AI Model
-    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+    GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
     class Config:
         case_sensitive = True

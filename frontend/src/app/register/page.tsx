@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiUrl } from "@/lib/auth";
+import { apiUrl, setToken } from "@/lib/auth";
 
 export default function Register() {
   const router = useRouter();
@@ -20,7 +20,9 @@ export default function Register() {
     });
 
     if (res.ok) {
-      router.push("/login?registered=true");
+      const data = await res.json();
+      setToken(data.access_token);
+      router.push("/onboarding");
     } else {
       try {
         const data = await res.json();

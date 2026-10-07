@@ -137,6 +137,11 @@ def delete_outlet(outlet_id: int, db: Session = Depends(get_db)):
 # Products Endpoints
 # -------------------------------------------------------------
 
+@router.get("/categories")
+def list_categories(db: Session = Depends(get_db)):
+    rows = db.query(models.Product.category).distinct().order_by(models.Product.category).all()
+    return [r[0] for r in rows if r[0]]
+
 @router.get("/products")
 def list_products(
     category: Optional[str] = None,
@@ -314,7 +319,7 @@ async def analyze_capture(
     if not resolved_api_key:
         raise HTTPException(
             status_code=400,
-            detail="A valid Google Gemini API Key is required for vision analysis. Please provide your Gemini API key in the form or save it in your account settings."
+            detail="A valid AI API Key is required for vision analysis. Please provide your API key in the form or save it in your account settings."
         )
 
     try:
@@ -332,7 +337,7 @@ async def analyze_capture(
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini Vision analysis error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"AI Vision analysis error: {str(e)}")
 
 @router.post("/captures/manual", status_code=status.HTTP_201_CREATED)
 def manual_audit_capture(

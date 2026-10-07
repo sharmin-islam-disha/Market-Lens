@@ -31,8 +31,8 @@ def analyze_shelf_image(
     clean_key = (api_key or "").strip()
     if not clean_key or len(clean_key) < 15 or clean_key == "AIza..." or clean_key.startswith("dummy"):
         raise ValueError(
-            "A valid Google Gemini API Key is required to analyze shelf images. "
-            "Please configure your Gemini API Key in Onboarding or provide it in the capture form."
+            "A valid AI API Key is required to analyze shelf images. "
+            "Please configure your API Key in Onboarding or provide it in the capture form."
         )
 
     # 1. Save uploaded image file locally
@@ -299,10 +299,7 @@ def _run_gemini_vision(
     )
 
     from core.config import settings
-    # Prioritize active Google Gemini vision models (gemini-2.5-flash responds in ~1.5s with HTTP 200)
-    models_to_try = ["gemini-2.5-flash", "gemini-3.8-flash", "gemini-flash-latest", "gemini-2.0-flash", "gemini-1.5-flash"]
-    if settings.GEMINI_MODEL and settings.GEMINI_MODEL not in models_to_try:
-        models_to_try.append(settings.GEMINI_MODEL)
+    models_to_try = [settings.GEMINI_MODEL]
 
     last_error = ""
 
@@ -340,10 +337,10 @@ def _run_gemini_vision(
                     cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
                 return json.loads(cleaned)
             else:
-                last_error = f"{model} returned HTTP {resp.status_code}: {resp.text}"
-                logger.warning(f"Gemini model {model} attempt failed: {last_error}")
+                last_error = f"HTTP {resp.status_code}: {resp.text}"
+                logger.warning(f"Vision model {model} attempt failed: {last_error}")
         except Exception as e:
             last_error = str(e)
-            logger.warning(f"Gemini model {model} exception: {last_error}")
+            logger.warning(f"Vision model {model} exception: {last_error}")
 
-    raise RuntimeError(f"Gemini Vision API request failed across all models: {last_error}")
+    raise RuntimeError(f"AI Vision analysis failed. Please try again later.")

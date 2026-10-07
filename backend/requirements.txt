@@ -4,7 +4,7 @@ httpx
 python-dotenv
 google-generativeai
 pydantic-settings
-sqlalchemy
+sqlalchemy>=2.0,<2.1
 passlib[bcrypt]
 pyjwt
 python-multipart

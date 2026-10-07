@@ -117,7 +117,7 @@ export default function Dashboard() {
           <p className="text-sm text-gray-500">Live retail audit metrics & SKU shelf share analytics</p>
         </div>
         <div className="flex items-center gap-3">
-          {/* Gemini API Key Status Badge */}
+          {/* AI Key Status Badge */}
           <div className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border shadow-sm ${
             user?.has_api_key
               ? "bg-emerald-50 border-emerald-200 text-emerald-800"
@@ -125,7 +125,7 @@ export default function Dashboard() {
           }`}>
             <span className={`w-2 h-2 rounded-full ${user?.has_api_key ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`}></span>
             <Key size={14} className={user?.has_api_key ? "text-emerald-600" : "text-amber-600"} />
-            <span>{user?.has_api_key ? `Valid API Key (${user.api_key_preview || "Active"})` : "API Key Not Set"}</span>
+            <span>{user?.has_api_key ? "API Key Connected" : "API Key Not Set"}</span>
           </div>
 
           <button
@@ -376,7 +376,7 @@ export default function Dashboard() {
             <div>
               <h2 className="text-base font-bold text-gray-900">Recent Shelf Audits & VLM Detections</h2>
               <p className="text-xs text-gray-500">
-                Click any store audit to view the captured shelf photo, facing breakdown, and Gemini VLM SKU detections
+                Click any store audit to view the captured shelf photo, facing breakdown, and AI Vision SKU detections
               </p>
             </div>
           </div>

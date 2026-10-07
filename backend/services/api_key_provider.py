@@ -14,7 +14,7 @@ def detect_provider(api_key: str) -> str | None:
 def test_api_key(provider: str, api_key: str) -> tuple[bool, str]:
     """Test API key live against Gemini provider. Never log or leak the raw key."""
     if provider != "gemini":
-        return False, "Only Gemini (Google) API keys are supported for shelf analysis."
+        return False, "Only Google AI API keys are supported for shelf analysis."
     
     try:
         resp = httpx.get(
@@ -22,11 +22,11 @@ def test_api_key(provider: str, api_key: str) -> tuple[bool, str]:
             timeout=REQUEST_TIMEOUT,
         )
     except httpx.RequestError:
-        logger.warning("Provider validation request failed for Gemini")
-        return False, "Could not reach the Gemini API to validate the key"
+        logger.warning("Provider validation request failed")
+        return False, "Could not reach the AI API to validate the key"
 
     if resp.status_code == 200:
         return True, ""
     if resp.status_code in (400, 401, 403):
-        return False, "The Gemini API key was rejected"
+        return False, "The API key was rejected"
     return False, f"Provider returned an unexpected status ({resp.status_code})"
