@@ -3,21 +3,21 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Lightbulb, 
-  Camera, 
-  Store, 
-  Package, 
-  MapPin, 
-  BarChart2, 
+import {
+  LayoutDashboard,
+  Lightbulb,
+  Camera,
+  Store,
+  Package,
+  MapPin,
   LogOut,
-  Key,
   CheckCircle,
   AlertCircle,
-  Layers
+  Layers,
+  Settings
 } from "lucide-react";
 import { logout, fetchWithAuth } from "@/lib/auth";
+import InstallPrompt from "@/components/InstallPrompt";
 
 interface UserProfile {
   name: string;
@@ -49,6 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Outlets", href: "/outlets", icon: Store },
     { name: "Products", href: "/products", icon: Package },
     { name: "Visits", href: "/visits", icon: MapPin },
+    { name: "Settings", href: "/settings", icon: Settings },
   ];
 
   return (
@@ -90,42 +91,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          {/* Pipeline Section */}
-          <div className="mt-8 px-4">
-            <div className="bg-black/10 rounded-xl p-4 backdrop-blur-sm border border-white/10">
-              <div className="flex items-center gap-2 mb-2 text-white/90">
-                <BarChart2 size={16} />
-                <span className="text-xs font-bold tracking-wider uppercase">Pipeline</span>
-              </div>
-              <p className="text-[10px] text-white/60">capture → vision → analytics → actions</p>
-            </div>
-          </div>
-
-          {/* AI Key Status Badge */}
-          <div className="mt-4 px-4">
-            <div className={`p-3.5 rounded-xl backdrop-blur-sm border transition-all ${
-              user?.has_api_key 
-                ? "bg-emerald-950/40 border-emerald-400/40 text-white" 
-                : "bg-amber-950/40 border-amber-400/40 text-white"
-            }`}>
-              <div className="flex items-center justify-between mb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-2 h-2 rounded-full ${user?.has_api_key ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`}></span>
-                  <span className="text-[11px] font-bold tracking-wider uppercase">AI Vision</span>
-                </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                  user?.has_api_key ? "bg-emerald-500/30 text-emerald-200 border border-emerald-400/40" : "bg-amber-500/30 text-amber-200 border border-amber-400/40"
-                }`}>
-                  {user?.has_api_key ? "Valid Key" : "No Key"}
-                </span>
-              </div>
-              <p className="text-[11px] font-medium text-white/90 flex items-center gap-1.5">
-                <Key size={12} className={user?.has_api_key ? "text-emerald-300" : "text-amber-300"} />
-                <span>{user?.has_api_key ? "API Key Connected" : "Setup in Onboarding"}</span>
-              </p>
-            </div>
-          </div>
         </div>
+
+        <InstallPrompt />
 
         {/* Bottom User Section */}
         <div className="p-4 bg-black/10 backdrop-blur-md border-t border-white/10 flex items-center justify-between">

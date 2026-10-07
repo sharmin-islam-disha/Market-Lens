@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Camera, Image as ImageIcon, Box, AlertTriangle, PlayCircle, CheckCircle, RefreshCw, Layers, Edit3, Key, Plus, History, Eye } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
@@ -56,7 +57,11 @@ interface ManualFacingState {
   };
 }
 
-export default function CaptureShelf() {
+function CaptureShelfInner() {
+  const searchParams = useSearchParams();
+  const urlVisitId = searchParams.get("visit_id");
+  const urlOutletId = searchParams.get("outlet_id");
+
   const [auditMode, setAuditMode] = useState<"ai" | "manual">("ai");
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [selectedOutlet, setSelectedOutlet] = useState<string>("");
@@ -123,7 +128,9 @@ export default function CaptureShelf() {
       .then((res) => (res.ok ? res.json() : []))
       .then((data: Outlet[]) => {
         setOutlets(data);
-        if (data.length > 0) {
+        if (urlOutletId) {
+          setSelectedOutlet(urlOutletId);
+        } else if (data.length > 0) {
           setSelectedOutlet(data[0].id.toString());
         }
       })
@@ -216,12 +223,9 @@ export default function CaptureShelf() {
       formData.append("file", file);
       formData.append("outlet_id", selectedOutlet);
       formData.append("shelf_section", section);
-      if (fieldNotes) {
-        formData.append("field_notes", fieldNotes);
-      }
-      if (apiKeyInput.trim()) {
-        formData.append("api_key", apiKeyInput.trim());
-      }
+      if (fieldNotes) formData.append("field_notes", fieldNotes);
+      if (apiKeyInput.trim()) formData.append("api_key", apiKeyInput.trim());
+      if (urlVisitId) formData.append("visit_id", urlVisitId);
 
       const res = await fetchWithAuth("/api/captures/analyze", {
         method: "POST",
@@ -275,6 +279,7 @@ export default function CaptureShelf() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           outlet_id: parseInt(selectedOutlet),
+          visit_id: urlVisitId ? parseInt(urlVisitId) : null,
           shelf_section: section,
           field_notes: fieldNotes,
           posm_present: posmPresent,
@@ -372,13 +377,23 @@ export default function CaptureShelf() {
               </div>
             )}
 
+            {/* Visit banner */}
+            {urlVisitId && (
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
+                <span className="font-semibold">📋 Capturing under Visit #{urlVisitId}</span>
+                <Link href="/visits" className="font-bold underline text-emerald-700 ml-2">← Back to Visits</Link>
+              </div>
+            )}
+
             {/* Outlet Selection */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm font-semibold text-gray-900">Retail Outlet *</label>
-                <Link href="/outlets" className="text-xs text-[#ca1551] font-semibold hover:underline">
-                  + Add Outlet
-                </Link>
+                {!urlVisitId && (
+                  <Link href="/outlets" className="text-xs text-[#ca1551] font-semibold hover:underline">
+                    + Add Outlet
+                  </Link>
+                )}
               </div>
               {outlets.length === 0 ? (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between">
@@ -386,6 +401,10 @@ export default function CaptureShelf() {
                   <Link href="/outlets" className="font-bold underline text-amber-900 ml-2">
                     Create Outlet First →
                   </Link>
+                </div>
+              ) : urlVisitId ? (
+                <div className="w-full bg-gray-50 border border-gray-200 text-gray-700 py-2.5 px-4 rounded-xl text-sm font-medium">
+                  {outlets.find(o => o.id.toString() === selectedOutlet)?.name || "Loading..."}
                 </div>
               ) : (
                 <select
@@ -913,6 +932,14 @@ export default function CaptureShelf() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CaptureShelf() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-gray-400 text-sm">Loading...</div>}>
+      <CaptureShelfInner />
+    </Suspense>
   );
 }
 

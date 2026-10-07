@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Package, Plus, Search, Tag, DollarSign, Percent, Trash2, X } from "lucide-react";
+import { Package, Plus, Search, Tag, Percent, Trash2, X, Upload, Download, CheckCircle2, AlertCircle, Loader2, FileSpreadsheet } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
 
 interface Product {
@@ -35,6 +35,12 @@ export default function Products() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Import state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -121,6 +127,38 @@ export default function Products() {
     return matchesSearch && matchesTab && matchesCategory;
   });
 
+  const downloadSampleCSV = () => {
+    const rows = [
+      "sku_code,name,brand,category,is_aci,mrp,target_shelf_share",
+      "ACI-OIL-1L,ACI Pure Soya Oil 1L,ACI,cooking,true,180,30",
+      "PRAN-JUICE-1L,Pran Mango Juice 1L,Pran,beverages,false,120,20",
+    ];
+    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "sample_products.csv";
+    a.click();
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    const form = new FormData();
+    form.append("file", importFile);
+    try {
+      const res = await fetchWithAuth("/api/products/import", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Import failed");
+      setImportResult(data);
+      loadProducts();
+    } catch (e: unknown) {
+      setImportResult({ created: 0, skipped: 0, errors: [e instanceof Error ? e.message : "Import failed"] });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const aciCount = products.filter((p) => p.is_aci).length;
   const compCount = products.filter((p) => !p.is_aci).length;
   const categories = Array.from(new Set(products.map((p) => p.category)));
@@ -133,12 +171,20 @@ export default function Products() {
           <h1 className="text-2xl font-bold text-gray-900">Product & SKU Master</h1>
           <p className="text-sm text-gray-500">Master product catalog tracking ACI and competitor brand SKUs</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 bg-[#ca1551] hover:bg-[#b01346] text-white font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
-        >
-          <Plus size={16} /> Add Product
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowImportModal(true); setImportFile(null); setImportResult(null); }}
+            className="px-4 py-2.5 bg-white border border-gray-200 hover:border-[#ca1551] text-gray-700 hover:text-[#ca1551] font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+          >
+            <Upload size={16} /> Import CSV / Excel
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 bg-[#ca1551] hover:bg-[#b01346] text-white font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+          >
+            <Plus size={16} /> Add Product
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -332,6 +378,75 @@ export default function Products() {
           </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-lg font-bold text-gray-900">Import Products</h3>
+              <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+
+            {/* Step 1 — Download sample */}
+            <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <p className="text-xs font-bold text-gray-700 mb-2">Step 1 — Download sample template</p>
+              <p className="text-xs text-gray-500 mb-3">Fill in your product data using these columns:<br />
+                <span className="font-mono text-[11px] text-gray-600">sku_code · name · brand · category · is_aci · mrp · target_shelf_share</span>
+              </p>
+              <button onClick={downloadSampleCSV} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 hover:border-[#ca1551] text-gray-700 hover:text-[#ca1551] text-xs font-bold rounded-lg transition-colors">
+                <Download size={13} /> Download sample_products.csv
+              </button>
+            </div>
+
+            {/* Step 2 — Upload */}
+            <div className="mb-5">
+              <p className="text-xs font-bold text-gray-700 mb-2">Step 2 — Upload filled file</p>
+              <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${importFile ? "border-[#ca1551] bg-rose-50" : "border-gray-200 hover:border-[#ca1551] hover:bg-gray-50"}`}>
+                <FileSpreadsheet size={22} className={importFile ? "text-[#ca1551]" : "text-gray-400"} />
+                <p className="text-xs font-semibold mt-2 text-gray-600">
+                  {importFile ? importFile.name : "Click to upload CSV or Excel (.xlsx)"}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-1">Max 5MB</p>
+                <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }} />
+              </label>
+            </div>
+
+            {/* Result */}
+            {importResult && (
+              <div className="mb-4 space-y-2">
+                {importResult.created > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">
+                    <CheckCircle2 size={14} /> {importResult.created} product{importResult.created > 1 ? "s" : ""} imported successfully.
+                  </div>
+                )}
+                {importResult.skipped > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg">
+                    <AlertCircle size={14} /> {importResult.skipped} row{importResult.skipped > 1 ? "s" : ""} skipped (duplicate SKU code).
+                  </div>
+                )}
+                {importResult.errors.map((e, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 px-3 py-2 rounded-lg">
+                    <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> {e}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowImportModal(false)} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={handleImport}
+                disabled={!importFile || importing}
+                className="flex items-center gap-2 px-5 py-2 bg-[#ca1551] hover:bg-[#b01346] text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-colors"
+              >
+                {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {importing ? "Importing..." : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Product Modal */}
       {showAddModal && (

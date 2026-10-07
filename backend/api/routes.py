@@ -4,6 +4,8 @@ from sqlalchemy import func
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+import csv
+import io
 
 from db.database import get_db
 from db import models
@@ -124,6 +126,55 @@ def create_outlet(outlet_in: OutletCreate, db: Session = Depends(get_db)):
     db.refresh(outlet)
     return outlet
 
+@router.post("/outlets/import")
+async def import_outlets(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    content = await file.read()
+    rows = []
+    filename = file.filename or ""
+
+    try:
+        if filename.endswith(".xlsx") or filename.endswith(".xls"):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content))
+            ws = wb.active
+            headers = [str(cell.value).strip() if cell.value is not None else "" for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if any(v is not None for v in row):
+                    rows.append(dict(zip(headers, [str(v).strip() if v is not None else "" for v in row])))
+        else:
+            text = content.decode("utf-8-sig")
+            rows = list(csv.DictReader(io.StringIO(text)))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not parse file: {e}")
+
+    created, skipped, errors = 0, 0, []
+    for i, row in enumerate(rows, start=2):
+        try:
+            code = str(row.get("code", "")).strip()
+            name = str(row.get("name", "")).strip()
+            if not code or not name:
+                errors.append(f"Row {i}: code and name are required")
+                continue
+            if db.query(models.Outlet).filter(models.Outlet.code == code).first():
+                skipped += 1
+                continue
+            outlet = models.Outlet(
+                code=code,
+                name=name,
+                channel=str(row.get("channel", "Supermarket")).strip() or "Supermarket",
+                address=str(row.get("address", "")).strip(),
+                city=str(row.get("city", "")).strip(),
+                contact_person=str(row.get("contact_person", "")).strip() or None,
+                phone=str(row.get("phone", "")).strip() or None,
+            )
+            db.add(outlet)
+            db.flush()
+            created += 1
+        except Exception as e:
+            errors.append(f"Row {i}: {e}")
+    db.commit()
+    return {"created": created, "skipped": skipped, "errors": errors}
+
 @router.delete("/outlets/{outlet_id}")
 def delete_outlet(outlet_id: int, db: Session = Depends(get_db)):
     outlet = db.query(models.Outlet).filter(models.Outlet.id == outlet_id).first()
@@ -178,6 +229,57 @@ def create_product(product_in: ProductCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(product)
     return product
+
+@router.post("/products/import")
+async def import_products(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    content = await file.read()
+    rows = []
+    filename = file.filename or ""
+
+    try:
+        if filename.endswith(".xlsx") or filename.endswith(".xls"):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(content))
+            ws = wb.active
+            headers = [str(cell.value).strip() if cell.value is not None else "" for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if any(v is not None for v in row):
+                    rows.append(dict(zip(headers, [str(v).strip() if v is not None else "" for v in row])))
+        else:
+            text = content.decode("utf-8-sig")
+            rows = list(csv.DictReader(io.StringIO(text)))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not parse file: {e}")
+
+    created, skipped, errors = 0, 0, []
+    for i, row in enumerate(rows, start=2):
+        try:
+            sku_code = str(row.get("sku_code", "")).strip().upper()
+            name = str(row.get("name", "")).strip()
+            if not sku_code or not name:
+                errors.append(f"Row {i}: sku_code and name are required")
+                continue
+            if db.query(models.Product).filter(models.Product.sku_code == sku_code).first():
+                skipped += 1
+                continue
+            is_aci_raw = str(row.get("is_aci", "false")).strip().lower()
+            is_aci = is_aci_raw in ("true", "1", "yes")
+            product = models.Product(
+                sku_code=sku_code,
+                name=name,
+                brand=str(row.get("brand", "")).strip() or "Unknown",
+                category=str(row.get("category", "")).strip().lower() or "general",
+                is_aci=is_aci,
+                mrp=float(row.get("mrp") or 0),
+                target_shelf_share=float(row.get("target_shelf_share") or 0),
+            )
+            db.add(product)
+            db.flush()
+            created += 1
+        except Exception as e:
+            errors.append(f"Row {i}: {e}")
+    db.commit()
+    return {"created": created, "skipped": skipped, "errors": errors}
 
 @router.delete("/products/{product_id}")
 def delete_product(product_id: int, db: Session = Depends(get_db)):
@@ -266,6 +368,7 @@ class ManualAuditFacing(BaseModel):
 
 class ManualAuditCreate(BaseModel):
     outlet_id: int
+    visit_id: Optional[int] = None
     shelf_section: str = "staples"
     field_notes: Optional[str] = None
     posm_present: bool = False
@@ -279,6 +382,7 @@ async def analyze_capture(
     shelf_section: str = Form("staples"),
     field_notes: Optional[str] = Form(None),
     api_key: Optional[str] = Form(None),
+    visit_id: Optional[int] = Form(None),
     authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db),
 ):
@@ -331,6 +435,7 @@ async def analyze_capture(
             field_notes=field_notes,
             api_key=resolved_api_key,
             user_id=user_id,
+            visit_id=visit_id,
             db=db,
         )
         return result
@@ -372,6 +477,7 @@ def manual_audit_capture(
         posm_present=audit_in.posm_present,
         posm_type=audit_in.posm_type,
         user_id=user_id,
+        visit_id=audit_in.visit_id,
         db=db,
     )
     return result

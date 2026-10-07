@@ -8,5 +8,6 @@ sqlalchemy>=2.0,<2.1
 passlib[bcrypt]
 pyjwt
 python-multipart
+openpyxl
 psycopg2-binary
 prometheus-fastapi-instrumentator

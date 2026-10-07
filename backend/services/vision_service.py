@@ -22,6 +22,7 @@ def analyze_shelf_image(
     api_key: str | None,
     user_id: int | None,
     db: Session,
+    visit_id: int | None = None,
 ) -> dict:
     """
     Run real multimodal vision detection on an uploaded shelf image using Google Gemini VLM.
@@ -67,6 +68,7 @@ def analyze_shelf_image(
     # 5. Persist ShelfCapture record
     capture = models.ShelfCapture(
         outlet_id=outlet.id,
+        visit_id=visit_id,
         user_id=user_id,
         shelf_section=shelf_section,
         image_url=image_url,
@@ -161,6 +163,7 @@ def record_manual_audit(
     posm_type: str | None,
     user_id: int | None,
     db: Session,
+    visit_id: int | None = None,
 ) -> dict:
     """
     Record an authentic manual shelf audit conducted by a field representative without AI.
@@ -173,6 +176,7 @@ def record_manual_audit(
 
     capture = models.ShelfCapture(
         outlet_id=outlet.id,
+        visit_id=visit_id,
         user_id=user_id,
         shelf_section=shelf_section,
         image_url="/placeholder_manual_audit.jpg",

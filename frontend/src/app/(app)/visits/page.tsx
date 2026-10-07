@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { MapPin, Plus, Search, Calendar, User, Clock, CheckCircle2, AlertCircle, X, Camera } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
 
@@ -24,6 +25,7 @@ interface OutletOption {
 }
 
 export default function Visits() {
+  const router = useRouter();
   const [visits, setVisits] = useState<Visit[]>([]);
   const [outlets, setOutlets] = useState<OutletOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,14 +90,9 @@ export default function Visits() {
       });
 
       if (res.ok) {
+        const newVisit = await res.json();
         setShowAddModal(false);
-        setFormData({
-          outlet_id: outlets[0]?.id?.toString() || "",
-          rep_name: "",
-          status: "completed",
-          notes: "",
-        });
-        loadData();
+        router.push(`/capture?visit_id=${newVisit.id}&outlet_id=${formData.outlet_id}`);
       } else {
         const errJson = await res.json().catch(() => ({}));
         setError(errJson.detail || "Failed to log visit");
@@ -233,6 +230,7 @@ export default function Visits() {
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Captures</th>
                   <th className="px-6 py-4">Notes</th>
+                  <th className="px-6 py-4"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -276,6 +274,14 @@ export default function Visits() {
                     </td>
                     <td className="px-6 py-4 text-xs text-gray-500 max-w-xs truncate">
                       {visit.notes || "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => router.push(`/capture?visit_id=${visit.id}&outlet_id=${visit.outlet_id}`)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ca1551] hover:bg-[#b01346] text-white text-xs font-bold rounded-lg transition-colors"
+                      >
+                        <Camera size={12} /> Capture
+                      </button>
                     </td>
                   </tr>
                 ))}

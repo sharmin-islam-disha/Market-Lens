@@ -30,6 +30,10 @@ class UserCreate(BaseModel):
 class ApiKeyUpdate(BaseModel):
     api_key: str
 
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    gmail: Optional[str] = None
+
 def get_current_user(db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -140,4 +144,16 @@ def read_users_me_auth(current_user: models.User = Depends(get_current_user)):
 
 @users_router.get("/me")
 def read_users_me_users(current_user: models.User = Depends(get_current_user)):
+    return _build_user_profile(current_user)
+
+@users_router.patch("/me")
+def update_profile(profile: ProfileUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if profile.name is not None:
+        current_user.name = profile.name
+        current_user.full_name = profile.name
+    if profile.gmail is not None:
+        current_user.gmail = profile.gmail
+        current_user.email = profile.gmail
+    db.commit()
+    db.refresh(current_user)
     return _build_user_profile(current_user)

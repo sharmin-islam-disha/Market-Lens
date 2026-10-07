@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Store, Plus, Search, MapPin, Phone, Calendar, Trash2, CheckCircle, X, Camera, Eye } from "lucide-react";
+import { Store, Plus, Search, MapPin, Calendar, Trash2, X, Camera, Eye, Upload, Download, CheckCircle2, AlertCircle, Loader2, FileSpreadsheet } from "lucide-react";
 import { fetchWithAuth } from "@/lib/auth";
 
 interface Outlet {
@@ -37,6 +37,12 @@ export default function Outlets() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Import state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null);
 
   const loadOutlets = async () => {
     setLoading(true);
@@ -115,6 +121,38 @@ export default function Outlets() {
     return matchesSearch && matchesCity;
   });
 
+  const downloadSampleCSV = () => {
+    const rows = [
+      "code,name,channel,address,city,contact_person,phone",
+      "OUT-DHK-001,Shwapno Uttara,Supermarket,House 14 Road 2 Sector 3 Uttara,Dhaka,Store Manager,+8801712345678",
+      "OUT-CTG-001,Agora Agrabad,Hypermarket,Agrabad Commercial Area,Chittagong,Branch Head,+8801812345678",
+    ];
+    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "sample_outlets.csv";
+    a.click();
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    const form = new FormData();
+    form.append("file", importFile);
+    try {
+      const res = await fetchWithAuth("/api/outlets/import", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Import failed");
+      setImportResult(data);
+      loadOutlets();
+    } catch (e: unknown) {
+      setImportResult({ created: 0, skipped: 0, errors: [e instanceof Error ? e.message : "Import failed"] });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const auditedCount = outlets.filter((o) => o.audits_count > 0).length;
   const cities = Array.from(new Set(outlets.map((o) => o.city)));
 
@@ -126,12 +164,20 @@ export default function Outlets() {
           <h1 className="text-2xl font-bold text-gray-900">Retail Outlets</h1>
           <p className="text-sm text-gray-500">Master database for audited supermarket & trade partner outlets</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2.5 bg-[#ca1551] hover:bg-[#b01346] text-white font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
-        >
-          <Plus size={16} /> Add Outlet
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowImportModal(true); setImportFile(null); setImportResult(null); }}
+            className="px-4 py-2.5 bg-white border border-gray-200 hover:border-[#ca1551] text-gray-700 hover:text-[#ca1551] font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+          >
+            <Upload size={16} /> Import CSV / Excel
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 bg-[#ca1551] hover:bg-[#b01346] text-white font-bold rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+          >
+            <Plus size={16} /> Add Outlet
+          </button>
+        </div>
       </div>
 
       {/* Summary KPI Cards */}
@@ -302,6 +348,75 @@ export default function Outlets() {
           </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-lg font-bold text-gray-900">Import Outlets</h3>
+              <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            </div>
+
+            {/* Step 1 — Download sample */}
+            <div className="mb-5 p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <p className="text-xs font-bold text-gray-700 mb-2">Step 1 — Download sample template</p>
+              <p className="text-xs text-gray-500 mb-3">Fill in your outlet data using these columns:<br />
+                <span className="font-mono text-[11px] text-gray-600">code · name · channel · address · city · contact_person · phone</span>
+              </p>
+              <button onClick={downloadSampleCSV} className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 hover:border-[#ca1551] text-gray-700 hover:text-[#ca1551] text-xs font-bold rounded-lg transition-colors">
+                <Download size={13} /> Download sample_outlets.csv
+              </button>
+            </div>
+
+            {/* Step 2 — Upload */}
+            <div className="mb-5">
+              <p className="text-xs font-bold text-gray-700 mb-2">Step 2 — Upload filled file</p>
+              <label className={`flex flex-col items-center justify-center w-full h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${importFile ? "border-[#ca1551] bg-rose-50" : "border-gray-200 hover:border-[#ca1551] hover:bg-gray-50"}`}>
+                <FileSpreadsheet size={22} className={importFile ? "text-[#ca1551]" : "text-gray-400"} />
+                <p className="text-xs font-semibold mt-2 text-gray-600">
+                  {importFile ? importFile.name : "Click to upload CSV or Excel (.xlsx)"}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-1">Max 5MB</p>
+                <input type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={(e) => { setImportFile(e.target.files?.[0] || null); setImportResult(null); }} />
+              </label>
+            </div>
+
+            {/* Result */}
+            {importResult && (
+              <div className="mb-4 space-y-2">
+                {importResult.created > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">
+                    <CheckCircle2 size={14} /> {importResult.created} outlet{importResult.created > 1 ? "s" : ""} imported successfully.
+                  </div>
+                )}
+                {importResult.skipped > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg">
+                    <AlertCircle size={14} /> {importResult.skipped} row{importResult.skipped > 1 ? "s" : ""} skipped (duplicate outlet code).
+                  </div>
+                )}
+                {importResult.errors.map((e, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs text-red-700 bg-red-50 px-3 py-2 rounded-lg">
+                    <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> {e}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowImportModal(false)} className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50">Cancel</button>
+              <button
+                onClick={handleImport}
+                disabled={!importFile || importing}
+                className="flex items-center gap-2 px-5 py-2 bg-[#ca1551] hover:bg-[#b01346] text-white text-sm font-bold rounded-xl disabled:opacity-50 transition-colors"
+              >
+                {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                {importing ? "Importing..." : "Import"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Outlet Modal */}
       {showAddModal && (
