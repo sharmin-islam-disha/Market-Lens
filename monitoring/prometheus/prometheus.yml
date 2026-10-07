@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: marketlens-backend
+    static_configs:
+      - targets: ['marketlens-backend:8000']
+    metrics_path: /metrics
+
+  # NOTE: marketlens-nginx is NOT on monitoring_central_net by default.
+  # To enable nginx scraping, add monitoring_central_net to marketlens-nginx
+  # in prod.docker-compose.yml. Until then, this job will fail to connect.
+  - job_name: marketlens-nginx
+    static_configs:
+      - targets: ['marketlens-nginx:80']
+    metrics_path: /stub_status

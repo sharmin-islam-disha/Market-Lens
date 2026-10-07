@@ -1,71 +1,44 @@
 name: marketlens-prod
 
-networks:
-  marketlens-net:
-    name: marketlens-net
-    driver: bridge
-
-  acimisai_tunnel_network:
-    name: acimisai_tunnel_network
-    external: true
-
-  pg_central_net:
-    name: pg_central_net
-    external: true
-
-  monitoring_central_net:
-    name: monitoring_central_net
-    external: true
-
 services:
   marketlens-backend:
-    image: registry.acimisai.com/marketlens-backend:${IMAGE_TAG:-v1}
-    container_name: marketlens_backend_prod
+    image: registry.acimisai.com/marketlens-backend:${VERSION}
+    container_name: marketlens_prod_backend
     restart: unless-stopped
-    env_file:
-      - ./.env
-    environment:
-      - PORT=${BACKEND_PORT:-8000}
-      - DATABASE_URL=${DATABASE_URL}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - SECRET_KEY=${SECRET_KEY}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-    healthcheck:
-      test: ["CMD-SHELL", "python -c 'import urllib.request, os; urllib.request.urlopen(\"http://127.0.0.1:\" + str(os.environ.get(\"PORT\", 8000)) + \"/openapi.json\")' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+    env_file: ./.env
+    volumes:
+      - marketlens_uploads:/app/uploads
     networks:
       - marketlens-net
       - pg_central_net
       - monitoring_central_net
-
-  marketlens-frontend:
-    image: registry.acimisai.com/marketlens-frontend:${IMAGE_TAG:-v1}
-    container_name: marketlens_frontend_prod
-    restart: unless-stopped
-    env_file:
-      - ./.env
-    environment:
-      - PORT=${FRONTEND_PORT:-3000}
-      - BACKEND_URL=http://marketlens-backend:${BACKEND_PORT:-8000}
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-/api}
-    depends_on:
-      marketlens-backend:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:${FRONTEND_PORT:-3000}/ || exit 1"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  marketlens-frontend:
+    image: registry.acimisai.com/marketlens-frontend:${VERSION}
+    container_name: marketlens_prod_frontend
+    restart: unless-stopped
+    env_file: ./.env
     networks:
       - marketlens-net
+    depends_on:
+      marketlens-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   marketlens-nginx:
     image: nginx:alpine
-    container_name: marketlens_nginx_prod
+    container_name: marketlens_prod_nginx
     restart: unless-stopped
     expose:
       - "80"
@@ -74,14 +47,20 @@ services:
     depends_on:
       marketlens-frontend:
         condition: service_healthy
-      marketlens-backend:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthz || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
     networks:
       - marketlens-net
       - acimisai_tunnel_network
+
+volumes:
+  marketlens_uploads:
+
+networks:
+  marketlens-net:
+    driver: bridge
+    internal: false
+  acimisai_tunnel_network:
+    external: true
+  pg_central_net:
+    external: true
+  monitoring_central_net:
+    external: true
