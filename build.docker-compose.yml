@@ -1,0 +1,24 @@
+# Usage:
+#   docker login registry.acimisai.com
+#   VERSION=1.0.0 docker compose -f build.docker-compose.yml build
+#   VERSION=1.0.0 docker compose -f build.docker-compose.yml push
+
+name: marketlens-build
+
+services:
+  marketlens-backend:
+    image: registry.acimisai.com/marketlens-backend:${VERSION:-1.0.0}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      platforms:
+        - linux/amd64
+
+  marketlens-frontend:
+    image: registry.acimisai.com/marketlens-frontend:${VERSION:-1.0.0}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: runner
+      platforms:
+        - linux/amd64
