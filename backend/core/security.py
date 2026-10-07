@@ -1,9 +1,10 @@
+import os
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
 from core.config import settings
 
-SECRET_KEY = "supersecretkey_please_change_in_production"
+SECRET_KEY = os.environ.get("SECRET_KEY", "supersecretkey_please_change_in_production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
 
